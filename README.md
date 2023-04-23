@@ -25,3 +25,7 @@ This should be able to scale well to different tests. Tests changing each input 
 -  64 MPI ranks (2 compute nodes)
 -  128 MPI ranks (4 compute nodes)
 -  256 MPI ranks (8 compute nodes)
+
+# Complile/Run Instructions
+mpicc main.c -o a.out
+mpirun -N 2 a.out
