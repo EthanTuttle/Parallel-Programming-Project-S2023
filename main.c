@@ -3,13 +3,12 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <stdbool.h>
-#include "queue.h"
 //#include "clockcycle.h"
 
-#define population 8 // should be evenly divisible by numranks
+#define population 16 // should be evenly divisible by numranks
 #define connections 5
 #define infectChance 0.5
-#define dieChance 0.05
+#define dieChance 0.2
 #define clock_frequency 512000000
 #define startInfectedChance 0.3
 
@@ -42,6 +41,7 @@ struct Node* addToList(struct List *li, long long int val) {
         li->head = n;
     } else {
         n->prev = li->end;
+        li->end->next = n;
     }
 
     li->end = n;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     // initialize rank vars
     struct List infectedList = {NULL, NULL, 0}; // linked list for easy add/remove
     long long int deadCount = 0;
-    struct Queue* infectedQueue = createQueue(population/numranks);
+    struct List infectedQueue = {NULL, NULL, 0};
 
 
     // initialize structs
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
         // generate list of connections
         long long int friends[connections];
         for (int c = 0; c < connections; c++) {
-            friends[c] = rand() % connections;
+            friends[c] = rand() % population; // rand() % x = random number from 0 to x-1 ( e.g. [0-X) )
         }
         // determine if node starts infected
         float chance = (double)rand()/RAND_MAX;
@@ -115,8 +115,8 @@ int main(int argc, char *argv[]) {
 
     // day cycle
     int b = 0;
-    while (b < 10) { // TODO: come up with a stopping point
-        printf("Rank %i, day %i: %lli node(s) infected\n", myrank, b, infectedList.size);
+    while (b < 15) { // TODO: come up with a stopping point
+        printf("Rank %i, day %i: %lli node(s) infected, %lli node(s) dead, %lli node(s) fine\n", myrank, b, infectedList.size, deadCount, (population/numranks)-infectedList.size-deadCount);
         b += 1;
         struct Node* n = infectedList.head;
         while (n != NULL) {
@@ -129,8 +129,10 @@ int main(int argc, char *argv[]) {
                     long long int infectedID = people[id].friends[c];
                     // if infected id is owned by this rank, add to self queue
                     if (infectedID % numranks == myrank) {
-                        // TODO: check to see if node status = 0, 
-                        // if it is add it to infectedQueue and print to parallel I/O that it was infected and by who
+                        if (people[infectedID].status == 0) {
+                            addToList(&infectedQueue, infectedID);
+                            people[infectedID].status = 1;
+                        }
                     } else { // else, send a message to owning rank
                         // TODO: send MPI message including infected ID and the ID of the node that infected it
                     }
@@ -138,6 +140,7 @@ int main(int argc, char *argv[]) {
             }
 
             // after checking for infections by the node, check to see if the node dies
+            bool dead = false;
             float chance = (double)rand()/RAND_MAX;
             if (chance < dieChance) {
                 people[id].status = 2;
@@ -145,22 +148,37 @@ int main(int argc, char *argv[]) {
                 printf("Rank %i: Node %lli has died\n", myrank, n->id); // TODO: remove this
                 // TODO: print to parallel I/O that node has died
 
-                struct Node* temp = n->prev;
+                // n will get freed in deleteNode, so temp holds the next node in the linked list
+                struct Node* temp = n->next;
                 deleteNode(&infectedList, n);
                 deadCount += 1;
                 n = temp;
+                dead = true;
             }
 
             // increment node along linked list
-            if (n != NULL) { // might be null if the only infected node is killed
+            // don't increment if node died (already incremented with temp variable)
+            if (!dead) { 
                 n = n->next;
             }
         }
         
         // night cycle
+
         // TODO: check for nodes in MPI message queue and add to infectedQueue if status = 0
         // when they get added to the infectedQueue from mpi message queue, print to parallel I/O that they have been infected and by who
+
+        // Loop through queue and add nodes to infectedList
+        n = infectedQueue.head;
+        while(n != NULL) {
+            long long int id = n->id;
+            printf("Rank %i: Node %lli has been infected\n", myrank, id);
+            addToList(&infectedList, id);
+            deleteNode(&infectedQueue, n);
+            n = infectedQueue.head;
+        }
     }
+    printf("End of Sim: Rank %i, day %i: %lli node(s) infected, %lli node(s) dead, %lli node(s) fine\n", myrank, b, infectedList.size, deadCount, (population/numranks)-infectedList.size-deadCount);
     
 
     MPI_Finalize();
