@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
     long long int deadCount = 0;
     struct List infectedQueue = {NULL, NULL, 0};
 
-
     // initialize structs
     srand(myrank);
     long long int id = myrank; // the id of the person we're creating 
@@ -115,11 +114,13 @@ int main(int argc, char *argv[]) {
 
     // day cycle
     int b = 0;
-    while (b < 15) { // TODO: come up with a stopping point
+    while (b < 20) { // TODO: come up with a stopping point
         printf("Rank %i, day %i: %lli node(s) infected, %lli node(s) dead, %lli node(s) fine\n", myrank, b, infectedList.size, deadCount, (population/numranks)-infectedList.size-deadCount);
         b += 1;
         struct Node* n = infectedList.head;
-        while (n != NULL) {
+        long long int messageCount[numranks]; // index = rank, count[index] = number of messages to that rank
+        memset( messageCount, 0, numranks*sizeof(long long int) );
+        while (n != NULL) { // loop through infected nodes
             long long int id = n->id;
 
             // check for connections being infected
@@ -133,8 +134,10 @@ int main(int argc, char *argv[]) {
                             addToList(&infectedQueue, infectedID);
                             people[infectedID].status = 1;
                         }
-                    } else { // else, send a message to owning rank
-                        // TODO: send MPI message including infected ID and the ID of the node that infected it
+                    } else { // else, increment corresponding message count and send message
+                        messageCount[infectedID % numranks] += 1;
+                        MPI_Request request;
+                        MPI_Isend(&infectedID, 1, MPI_LONG_LONG_INT, infectedID % numranks, 0, MPI_COMM_WORLD, &request);
                     }
                 }
             }
@@ -163,11 +166,24 @@ int main(int argc, char *argv[]) {
             }
         }
         
-        // night cycle
+        // night cleanup
 
-        // TODO: check for nodes in MPI message queue and add to infectedQueue if status = 0
-        // when they get added to the infectedQueue from mpi message queue, print to parallel I/O that they have been infected and by who
+        // Reduce messageCount across all ranks to get total message count for this rank (totalMessageCount[myrank])
+        long long int totalMessageCount[numranks];
+        MPI_Allreduce(&messageCount, &totalMessageCount, numranks, MPI_LONG_LONG_INT, MPI_SUM,  MPI_COMM_WORLD);
 
+        // Receive all messages and add nodes not infected already to the infectedList
+        for (long long int i = 0; i < totalMessageCount[myrank]; i++) {
+            long long int recv;
+            MPI_Recv(&recv, 1, MPI_LONG_LONG_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            if (people[recv].status == 0) { // if node is already in self infectedQueue then status = 1, so there will be no repeats
+                people[recv].status = 1;
+                addToList(&infectedList, recv);
+                printf("Rank %i: Node %lli has been infected\n", myrank, id);
+                // TODO: print to parallel I/O that node recv has been infected
+            }
+        }
+        
         // Loop through queue and add nodes to infectedList
         n = infectedQueue.head;
         while(n != NULL) {
