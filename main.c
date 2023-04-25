@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include "clockcycle.h"
 
-#define population 16 // should be evenly divisible by numranks
+#define population 2000000000 // should be evenly divisible by numranks
 #define connections 5
 #define infectChance 0.5
 #define dieChance 0.2
@@ -94,7 +94,7 @@ void sim(int myrank, int numranks) {
         if (chance < startInfectedChance) {
             addToList(&infectedList, id);
             isInfected = 1;
-            printf("Rank %i: Node %lli has been infected at start\n", myrank, id); // TODO: remove this
+            //printf("Rank %i: Node %lli has been infected at start\n", myrank, id); // TODO: remove this
         }
         // generate struct and copy in list of connections
         struct Person p = {id, isInfected};
@@ -154,7 +154,7 @@ void sim(int myrank, int numranks) {
             if (chance < dieChance) {
                 people[id].status = 2;
                 
-                printf("Rank %i: Node %lli has died\n", myrank, n->id); // TODO: remove this
+                //printf("Rank %i: Node %lli has died\n", myrank, n->id); // TODO: remove this
                 // TODO: print to parallel I/O that node has died
 
                 // n will get freed in deleteNode, so temp holds the next node in the linked list
@@ -185,7 +185,7 @@ void sim(int myrank, int numranks) {
             if (people[recv].status == 0) { // if node is already in self infectedQueue then status = 1, so there will be no repeats
                 people[recv].status = 1;
                 addToList(&infectedList, recv);
-                printf("Rank %i: Node %lli has been infected\n", myrank, id);
+                //printf("Rank %i: Node %lli has been infected\n", myrank, id);
                 // TODO: print to parallel I/O that node recv has been infected
             }
         }
@@ -194,7 +194,7 @@ void sim(int myrank, int numranks) {
         n = infectedQueue.head;
         while(n != NULL) {
             long long int id = n->id;
-            printf("Rank %i: Node %lli has been infected\n", myrank, id);
+            //printf("Rank %i: Node %lli has been infected\n", myrank, id);
             addToList(&infectedList, id);
             deleteNode(&infectedQueue, n);
             n = infectedQueue.head;
