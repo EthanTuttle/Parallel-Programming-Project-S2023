@@ -79,9 +79,22 @@ void sim(int myrank, int numranks) {
     long long int deadCount = 0;
     struct List infectedQueue = {NULL, NULL, 0};
 
+    /****************************************************************************
+    This part creates the daySum array, array of 3 long longs [A,B,C], where
+    A is the number of fine
+    B is the number of infected
+    C is the number of dead
+    ****************************************************************************/
+    long long dayData[3];
+    dayData[0] = 0;
+    dayData[1] = 0;
+    dayData[2] = 0;
+    /****************************************************************************
+    ****************************************************************************/
+
     // initialize structs
     srand(myrank);
-    long long int id = myrank; // the id of the person we're creating 
+    long long int id = myrank; // the id of the person we're creating
     while (id < population) {
         // generate list of connections
         long long int friends[connections];
@@ -97,7 +110,7 @@ void sim(int myrank, int numranks) {
             printf("Rank %i: Node %lli has been infected at start\n", myrank, id); // TODO: remove this
         }
         // generate struct and copy in list of connections
-        struct Person p = {id, isInfected}; 
+        struct Person p = {id, isInfected};
         memcpy(p.friends, friends, connections * sizeof(long long int));
         people[id] = p;
 
@@ -125,6 +138,9 @@ void sim(int myrank, int numranks) {
         
         struct Node* n = infectedList.head;
         long long int messageCount[numranks]; // index = rank, count[index] = number of messages to that rank
+        // daySum array
+        long long int daySum[3]; // same as line 90-93
+        //
         memset( messageCount, 0, numranks*sizeof(long long int) );
         while (n != NULL) { // loop through infected nodes
             long long int id = n->id;
@@ -167,7 +183,7 @@ void sim(int myrank, int numranks) {
 
             // increment node along linked list
             // don't increment if node died (already incremented with temp variable)
-            if (!dead) { 
+            if (!dead) {
                 n = n->next;
             }
         }
@@ -177,6 +193,12 @@ void sim(int myrank, int numranks) {
         // Reduce messageCount across all ranks to get total message count for this rank (totalMessageCount[myrank])
         long long int totalMessageCount[numranks];
         MPI_Allreduce(&messageCount, &totalMessageCount, numranks, MPI_LONG_LONG_INT, MPI_SUM,  MPI_COMM_WORLD);
+
+        // Reduce dayData across all ranges to get all 3 values of daySym (fine,infected and dead)
+        daySum[0] = infectedList.size;
+        daySum[1] = deadCount;
+        daySum[2] = (population/numranks)-infectedList.size-deadCount;
+        MPI_Allreduce(&daySum, &dayData, (population/numranks), MPI_LONG_LONG_INT, MPI_SUM,  MPI_COMM_WORLD);
 
         // Receive all messages and add nodes not infected already to the infectedList
         for (long long int i = 0; i < totalMessageCount[myrank]; i++) {
@@ -220,6 +242,5 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Finalize();
-    
-    
 }
+
