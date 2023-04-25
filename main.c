@@ -74,7 +74,7 @@ void deleteNode(struct List *li, struct Node* n) {
 
 void sim(int myrank, int numranks) {
     // initialize rank vars
-    struct Person people[population];
+    struct Person *people = calloc(population, sizeof(struct Person));
     struct List infectedList = {NULL, NULL, 0}; // linked list for easy add/remove
     long long int deadCount = 0;
     struct List infectedQueue = {NULL, NULL, 0};
