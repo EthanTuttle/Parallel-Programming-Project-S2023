@@ -1,5 +1,5 @@
 #!/bin/sh
-#sbatch -p el8-rpi -N 1 --gres=gpu:4 -t 5 -o sim4.stdout -e sim4.stderr ./sim4.sh
+#sbatch -p el8 -N 1 --gres=gpu:6 -t 2 -o sim4.stdout -e sim4.stderr ./sim4.sh
 
 module load xl_r spectrum-mpi cuda
 
