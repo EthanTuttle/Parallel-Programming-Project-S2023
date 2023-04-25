@@ -29,3 +29,6 @@ This should be able to scale well to different tests. Tests changing each input 
 # Complile/Run Instructions
 mpicc main.c -o a.out
 mpirun -N 2 a.out
+
+# Github link
+https://github.com/EthanTuttle/Parallel-Programming-Project-S2023
