@@ -5,12 +5,12 @@
 #include <stdbool.h>
 #include "clockcycle.h"
 
-#define population 2000000000 // should be evenly divisible by numranks
+#define population 20000000 // should be evenly divisible by numranks
 #define connections 5
-#define infectChance 0.5
+#define infectChance 0.3
 #define dieChance 0.2
 #define clock_frequency 512000000
-#define startInfectedChance 0.3
+#define startInfectedChance 0.1
 
 struct Person
 {
